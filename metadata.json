@@ -1,0 +1,5 @@
+{
+  "name": "CTS Verifier Installer GUI",
+  "description": "A modern graphical user interface to streamline the installation of Android CTS (Compatibility Test Suite) Verifier APKs for various OS versions using ADB commands.",
+  "requestFramePermissions": []
+}
