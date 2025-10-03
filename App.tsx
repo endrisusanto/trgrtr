@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { installForVersion, getConnectedDevices } from './services/ctsInstallerService';
 import type { LogEntry, Device } from './types';
@@ -20,24 +21,45 @@ const App: React.FC = () => {
   const logUpdater = useCallback((message: string, type: LogEntry['type'], deviceId?: string) => {
       if(isCancelledRef.current && type !== 'error') return;
       setLogs(prevLogs => [
-        ...prevLogs,
         {
           id: Date.now() + Math.random(),
           message,
           type,
           deviceId
-        }
+        },
+        ...prevLogs
       ]);
   }, []);
 
   const fetchDevices = useCallback(async () => {
     setIsScanning(true);
     setLogs([]);
+    logUpdater('Scanning for connected ADB devices...', 'info');
     setDevices([]);
     setSelectedDeviceIds([]);
     try {
         const foundDevices = await getConnectedDevices();
         setDevices(foundDevices);
+        if (foundDevices.length > 0) {
+            foundDevices.forEach(d => {
+                let statusMessage = `Found device: ${d.model} (${d.id}) - Status: ${d.status}`;
+                let logType: LogEntry['type'] = 'info';
+                if (d.status === 'Connected') {
+                    logType = 'success';
+                }
+                if (d.status === 'Unauthorized') {
+                    logType = 'error';
+                    statusMessage += ' - Please allow USB debugging on the device.';
+                }
+                if (d.status === 'Offline') {
+                    logType = 'error';
+                }
+                logUpdater(statusMessage, logType, d.id);
+            });
+            logUpdater(`Scan complete. Found ${foundDevices.length} device(s).`, 'success');
+        } else {
+            logUpdater('No devices found. Ensure ADB is configured and devices are connected.', 'info');
+        }
     } catch (error) {
         logUpdater(`Failed to scan for devices: ${error instanceof Error ? error.message : String(error)}`, 'error')
     } finally {
@@ -120,7 +142,7 @@ const App: React.FC = () => {
     <div className="h-screen bg-slate-900 text-slate-300 flex flex-col items-center p-4 sm:p-6 lg:p-8 overflow-hidden">
       <div className="w-full max-w-7xl mx-auto flex flex-col h-full">
         <Header />
-        <main className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 min-h-0">
+        <main className="mt-8 flex flex-col lg:grid lg:grid-cols-3 gap-8 flex-1 min-h-0">
           <div className="lg:col-span-1 flex flex-col space-y-6 overflow-y-auto pr-2">
             <DeviceManager 
                 devices={devices}
@@ -131,16 +153,18 @@ const App: React.FC = () => {
                 isLoading={isScanning}
                 isInstalling={isInstalling}
             />
+            <Disclaimer />
+          </div>
+          <div className="lg:col-span-2 flex flex-col gap-6 flex-1 min-h-0">
             <ActionPanel
                 selectedDeviceCount={selectedDeviceIds.length}
                 isInstalling={isInstalling}
                 onInstall={handleInstall}
                 onCancel={handleCancel}
             />
-            <Disclaimer />
-          </div>
-          <div className="lg:col-span-2 h-full">
-            <LogViewer logs={logs} />
+            <div className="flex-1 min-h-0">
+              <LogViewer logs={logs} />
+            </div>
           </div>
         </main>
       </div>

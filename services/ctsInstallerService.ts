@@ -115,6 +115,24 @@ export const getConnectedDevices = async (): Promise<Device[]> => {
 
 // --- CTS Installer Logic ---
 
+const COMMAND_SUCCESS_MESSAGES: { [key: string]: string } = {
+  'CtsVerifier.apk': 'CtsVerifier.apk installed successfully.',
+  'CtsPermissionApp.apk': 'CtsPermissionApp.apk installed successfully.',
+  'CtsEmptyDeviceOwner.apk': 'CtsEmptyDeviceOwner.apk reinstalled successfully.',
+  'dpm set-device-owner': 'Device owner set to CtsEmptyDeviceOwner.',
+  'read_device_identifiers': 'Permission READ_DEVICE_IDENTIFIERS granted.',
+  'MANAGE_EXTERNAL_STORAGE': 'Permission MANAGE_EXTERNAL_STORAGE configured.',
+};
+
+const findSuccessMessage = (command: string): string => {
+    for (const key in COMMAND_SUCCESS_MESSAGES) {
+        if (command.includes(key)) {
+            return COMMAND_SUCCESS_MESSAGES[key];
+        }
+    }
+    return 'Success';
+};
+
 async function* getCommands(versionId: string): AsyncGenerator<string> {
   const paths: { [key: string]: string } = {
     '15': '15',
@@ -138,14 +156,15 @@ async function* getCommands(versionId: string): AsyncGenerator<string> {
 
 
 export async function* installForVersion(versionId: string, deviceId: string): AsyncGenerator<{message: string, type: LogEntry['type']}> {
-  yield { message: 'Start Injecting the APP !', type: 'info' };
+  yield { message: 'Starting installation process...', type: 'info' };
   
   for await (const command of getCommands(versionId)) {
     const deviceCommand = command.replace('adb', `adb -s ${deviceId}`);
     yield { message: `-------------------------------------------------------------`, type: 'info' };
-    yield { message: `Running command: ${deviceCommand}`, type: 'command' };
+    yield { message: `Executing: ${deviceCommand}`, type: 'command' };
     await new Promise(res => setTimeout(res, MOCK_DELAY));
-    yield { message: 'Success', type: 'success' };
+    const successMessage = findSuccessMessage(command);
+    yield { message: successMessage, type: 'success' };
   }
     yield { message: `-------------------------------------------------------------`, type: 'info' };
 }
